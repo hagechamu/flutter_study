@@ -1,8 +1,6 @@
-import 'dart:html';
-
 import 'package:flutter/material.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 void main() {
@@ -15,9 +13,6 @@ void main() {
 
 final storage = new FlutterSecureStorage();
 
-// The await expression can only be used in an async function.
-// final countStr = await storage.read(key: 'count');
-
 final counterProvider = StateProvider<int>((ref) => 0);
 final isLoadingProvider = StateProvider<bool>((ref) => false);
 
@@ -26,27 +21,38 @@ class MyApp extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final counter = useState(0);
+    // final counterState = ref.watch(counterProvider);
+    // final isLoadingState = ref.watch(isLoadingProvider);
+
     void _incrementCounter() {
-      ref.read(counterProvider.notifier).state++;
+      counter.value++;
     }
 
     void _decrementCounter() {
-      ref.read(counterProvider.notifier).state--;
+      // ref.read(counterProvider.notifier).state--;
+      counter.value--;
     }
 
     void _resetCounter() {
-      ref.read(counterProvider.notifier).state = 0;
+      // ref.read(counterProvider.notifier).state = 0;
+      counter.value = 0;
     }
 
     void _setIsLoading(bool isLoadind) {
       ref.read(isLoadingProvider.notifier).state = isLoadind;
     }
 
+    void _persist() async {
+      await storage.write(key: 'count', value: counter.value.toString());
+    }
+
     void _incrementCounterWithAwait() async {
       _setIsLoading(true);
       await Future.delayed(Duration(seconds: 1)); // 1秒間待機する
-      await storage.write(key: 'count', value: ref.read(counterProvider.notifier).toString());
       _incrementCounter();
+      // await storage.write(key: 'count', value: ref.read(counterProvider.notifier).toString());
+      _persist();
       _setIsLoading(false);
     }
 
@@ -54,6 +60,8 @@ class MyApp extends HookConsumerWidget {
       _setIsLoading(true);
       await Future.delayed(Duration(seconds: 1)); // 1秒間待機する
       _decrementCounter();
+      // await storage.write(key: 'count', value: ref.read(counterProvider.notifier).toString());
+      _persist();
       _setIsLoading(false);
     }
 
@@ -61,8 +69,19 @@ class MyApp extends HookConsumerWidget {
       _setIsLoading(true);
       await Future.delayed(Duration(seconds: 1)); // 1秒間待機する
       _resetCounter();
+      // await storage.write(key: 'count', value: ref.read(counterProvider.notifier).toString());
+      _persist();
       _setIsLoading(false);
     }
+
+    Future<void> _initCounter() async {
+      final counterStr = await storage.read(key: 'count');
+      counter.value = int.tryParse(counterStr ?? '0') ?? 0;
+    }
+
+    useEffect(() {
+      _initCounter();
+    }, []);
 
     return MaterialApp(
       home: Scaffold(
@@ -77,7 +96,8 @@ class MyApp extends HookConsumerWidget {
                   const Text('ボタンを押した回数'),
                   ref.watch(isLoadingProvider) ? CircularProgressIndicator() :
                   Text(
-                    '${ref.watch(counterProvider)}',
+                    // '${ref.watch(counterProvider)}',
+                    '${counter.value}',
                     style: Theme.of(context).textTheme.headline4,
                   ),
                 ],
